@@ -19,6 +19,5 @@ rootProject.name = "supply-oscillator-android"
 
 include(":app")
 
-// kotlin_krx 로컬 모듈 (MIGRATION.md Section 6 참조)
+// krxkt local module (copied from kotlin_krx)
 include(":krxkt")
-project(":krxkt").projectDir = File("../kotlin_krx")
