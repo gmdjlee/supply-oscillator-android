@@ -19,7 +19,7 @@ import com.stock.oscillator.domain.model.ChartData
  *
  * 엑셀 '수급오실레이터' 시트 차트 구성 재현:
  * - 왼쪽 Y축: 시가총액 (조원) — LineChart
- * - 오른쪽 Y축: 오실레이터 — BarChart (양수:녹색, 음수:빨간색)
+ * - 오른쪽 Y축: 오실레이터 — LineChart + 마커 (양수:녹색, 음수:빨간색)
  * - X축: 날짜
  */
 @Composable
@@ -63,7 +63,6 @@ private fun setupChart(chart: CombinedChart) {
         setDrawBarShadow(false)
         isHighlightFullBarEnabled = false
         setDrawOrder(arrayOf(
-            CombinedChart.DrawOrder.BAR,
             CombinedChart.DrawOrder.LINE
         ))
 
@@ -119,26 +118,29 @@ private fun bindData(chart: CombinedChart, chartData: ChartData) {
         axisDependency = YAxis.AxisDependency.LEFT
     }
 
-    // === 바 데이터: 오실레이터 — 오른쪽 Y축 ===
+    // === 라인+마커 데이터: 오실레이터 — 오른쪽 Y축 ===
     val oscEntries = rows.mapIndexed { i, row ->
-        BarEntry(i.toFloat(), row.oscillator.toFloat())
+        Entry(i.toFloat(), row.oscillator.toFloat())
     }
-    val oscDataSet = BarDataSet(oscEntries, "수급오실레이터").apply {
-        // 양수: 녹색, 음수: 빨간색
-        colors = rows.map { row ->
+    val oscDataSet = LineDataSet(oscEntries, "수급오실레이터").apply {
+        color = Color.parseColor("#388E3C")         // 기본 선: 녹색
+        lineWidth = 1.5f
+        setDrawCircles(true)
+        circleRadius = 3f
+        setDrawValues(false)
+        axisDependency = YAxis.AxisDependency.RIGHT
+        // 양수: 녹색 마커, 음수: 빨간색 마커
+        circleColors = rows.map { row ->
             if (row.oscillator >= 0) Color.parseColor("#4CAF50")
             else Color.parseColor("#F44336")
         }
-        setDrawValues(false)
-        axisDependency = YAxis.AxisDependency.RIGHT
+        setCircleHoleColor(Color.WHITE)
+        circleHoleRadius = 1.5f
     }
 
     // CombinedData 조합
     val combinedData = CombinedData().apply {
-        setData(LineData(mcapDataSet))
-        setData(BarData(oscDataSet).apply {
-            barWidth = 0.6f
-        })
+        setData(LineData(mcapDataSet, oscDataSet))
     }
 
     chart.data = combinedData
