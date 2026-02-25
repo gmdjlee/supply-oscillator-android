@@ -272,13 +272,12 @@ class CalcOscillatorUseCaseTest {
     @Test
     fun `시가총액 조단위 변환이 엑셀과 동일한지 검증`() {
         val data = listOf(
-            DailyTrading("20240101", 450_000_000_000_000L, 100, 50),  // 450조
-            DailyTrading("20240102", 1_234_567_890_000L, 200, 100),   // ~1.23조
+            DailyTrading("20240101", 4_500_000_000_000_000L, 100, 50),  // 450조
+            DailyTrading("20240102", 12_345_678_900_000L, 200, 100),    // ~1.23조
         )
         val result = useCase.execute(data)
 
-        // 엑셀: 오실!B = 외인!B / 10000 (억→조 변환)
-        // 원 → 조: ÷ 1,000,000,000,000
+        // KRX 시가총액(원) → 조: ÷ 10,000,000,000,000 (10^13)
         assertEquals("450조", 450.0, result[0].marketCapTril, 0.001)
         assertEquals("~1.23조", 1.23456789, result[1].marketCapTril, 0.00001)
     }

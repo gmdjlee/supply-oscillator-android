@@ -30,5 +30,6 @@ data class OscillatorConfig(
         const val ROLLING_WINDOW = 5
         const val MARKET_CAP_DIVISOR = 10_0000_0000_0000.0  // 조 단위 변환 (원 → 조, KRX 시가총액 기준)
         const val DEFAULT_ANALYSIS_DAYS = 365
+        const val DEFAULT_DISPLAY_DAYS = 60   // 차트 표시 기간 (거래일 기준, EMA 시작점)
     }
 }

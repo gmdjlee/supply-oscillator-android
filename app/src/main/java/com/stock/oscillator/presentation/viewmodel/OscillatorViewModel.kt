@@ -61,7 +61,8 @@ class OscillatorViewModel(
     fun analyze(
         ticker: String,
         stockName: String,
-        analysisDays: Int = OscillatorConfig.DEFAULT_ANALYSIS_DAYS
+        analysisDays: Int = OscillatorConfig.DEFAULT_ANALYSIS_DAYS,
+        displayDays: Int = OscillatorConfig.DEFAULT_DISPLAY_DAYS
     ) {
         viewModelScope.launch {
             _uiState.value = OscillatorUiState.Loading("데이터 수집 중...")
@@ -85,8 +86,10 @@ class OscillatorViewModel(
                 }
 
                 // Step 2: 오실레이터 계산
+                // 5일 롤링은 전체 이력 사용, EMA는 표시 기간부터 새로 시작
                 _uiState.value = OscillatorUiState.Loading("오실레이터 계산 중...")
-                val oscillatorRows = calcOscillator.execute(dailyData)
+                val warmupCount = maxOf(0, dailyData.size - displayDays)
+                val oscillatorRows = calcOscillator.execute(dailyData, warmupCount)
 
                 // Step 3: 신호 분석
                 val signals = calcOscillator.analyzeSignals(oscillatorRows)

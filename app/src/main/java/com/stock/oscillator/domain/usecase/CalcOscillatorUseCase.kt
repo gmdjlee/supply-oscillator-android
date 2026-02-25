@@ -22,24 +22,35 @@ class CalcOscillatorUseCase(
     /**
      * 전체 오실레이터 계산 파이프라인
      *
+     * 5일 롤링 합은 전체 이력 데이터를 사용하여 정확한 값을 계산하고,
+     * EMA/MACD/Signal/Oscillator는 표시 기간(warmupCount 이후)부터
+     * 새로 시작하여 검증된 결과와 동일한 값을 생성합니다.
+     *
      * @param dailyData 일별 거래 원시 데이터 (날짜순 정렬 필수)
-     * @return 오실레이터 계산 결과 리스트
+     * @param warmupCount EMA 워밍업에 사용할 데이터 수 (5일 롤링에만 참여, EMA에서 제외)
+     *                    0이면 전체 데이터에 대해 EMA 계산 (기존 동작)
+     * @return 오실레이터 계산 결과 리스트 (warmupCount 이후 데이터만 반환)
      */
-    fun execute(dailyData: List<DailyTrading>): List<OscillatorRow> {
+    fun execute(dailyData: List<DailyTrading>, warmupCount: Int = 0): List<OscillatorRow> {
         require(dailyData.isNotEmpty()) { "일별 데이터가 비어있습니다" }
+        require(warmupCount in 0 until dailyData.size) { "warmupCount가 데이터 범위를 벗어났습니다" }
 
-        // Step 2: 5일 누적 순매수 (개장일 기준 rolling)
+        // Step 2: 5일 누적 순매수 (전체 이력 기간, 정확한 롤링 합 보장)
         val cumData = calc5DayRolling(dailyData)
 
-        // Step 3: 수급 비율
-        val supplyRatios = cumData.map { (daily, f5d, i5d) ->
+        // Step 3: 수급 비율 (전체 이력 기간)
+        val allSupplyRatios = cumData.map { (daily, f5d, i5d) ->
             if (daily.marketCap == 0L) 0.0
             else (f5d + i5d).toDouble() / daily.marketCap.toDouble()
         }
 
-        // Step 4: EMA 12일, 26일
-        val ema12 = calcEma(supplyRatios, config.emaFast)
-        val ema26 = calcEma(supplyRatios, config.emaSlow)
+        // 표시 기간 추출 (warmupCount 이후)
+        val displayRatios = allSupplyRatios.subList(warmupCount, allSupplyRatios.size)
+        val displayCumData = cumData.subList(warmupCount, cumData.size)
+
+        // Step 4: EMA 12일, 26일 (표시 기간부터 새로 시작)
+        val ema12 = calcEma(displayRatios, config.emaFast)
+        val ema26 = calcEma(displayRatios, config.emaSlow)
 
         // Step 5: MACD = EMA12 - EMA26
         val macd = ema12.zip(ema26) { e12, e26 -> e12 - e26 }
@@ -48,15 +59,15 @@ class CalcOscillatorUseCase(
         val signal = calcEma(macd, config.emaSignal)
 
         // Step 7: 오실레이터 = MACD - 시그널
-        return cumData.indices.map { i ->
-            val (daily, f5d, i5d) = cumData[i]
+        return displayCumData.indices.map { i ->
+            val (daily, f5d, i5d) = displayCumData[i]
             OscillatorRow(
                 date = daily.date,
                 marketCap = daily.marketCap,
                 marketCapTril = daily.marketCap / MARKET_CAP_DIVISOR,
                 foreign5d = f5d,
                 inst5d = i5d,
-                supplyRatio = supplyRatios[i],
+                supplyRatio = displayRatios[i],
                 ema12 = ema12[i],
                 ema26 = ema26[i],
                 macd = macd[i],
